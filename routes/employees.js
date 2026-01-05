@@ -71,7 +71,7 @@ router.post('/', [
     console.log('🔍 Existing is truthy?', !!existing);
     console.log('🔍 Existing value:', JSON.stringify(existing));
 
-    if (existing) {
+    if (existing && existing.id) {
       console.log('❌ Email already exists! Existing employee ID:', existing.id);
       return res.status(400).json({ error: 'Email already exists' });
     }

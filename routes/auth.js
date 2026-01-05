@@ -6,12 +6,13 @@ const { body, validationResult } = require('express-validator');
 const { auth } = require('../middleware/auth');
 const db = require('../config/database');
 
-// Generate JWT token
+// Generate JWT token - HARDCODED FOR NOW
 function generateToken(user) {
+  const secret = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-later-minimum-32-characters-long';
   return jwt.sign(
     { id: user.id, email: user.email, role: user.role },
-    process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRE || '7d' }
+    secret,
+    { expiresIn: '7d' }  // HARDCODED
   );
 }
 
@@ -30,7 +31,6 @@ router.post('/register', [
 
     const { name, email, password, role = 'Caregiver' } = req.body;
 
-    // Check if user already exists
     const existingUser = await db.get(
       'SELECT id FROM employees WHERE email = ?',
       [email.toLowerCase()]
@@ -40,10 +40,8 @@ router.post('/register', [
       return res.status(400).json({ error: 'Email already registered' });
     }
 
-    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create user
     const result = await db.run(
       'INSERT INTO employees (name, email, password, role) VALUES (?, ?, ?, ?)',
       [name, email.toLowerCase(), hashedPassword, role]
@@ -56,10 +54,7 @@ router.post('/register', [
 
     const token = generateToken(user);
 
-    res.status(201).json({
-      user,
-      token
-    });
+    res.status(201).json({ user, token });
   } catch (error) {
     console.error('Registration error:', error);
     res.status(500).json({ error: 'Registration failed' });
@@ -79,7 +74,6 @@ router.post('/login', [
 
     const { email, password } = req.body;
 
-    // Find user
     const user = await db.get(
       'SELECT * FROM employees WHERE email = ?',
       [email.toLowerCase()]
@@ -89,22 +83,17 @@ router.post('/login', [
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
-    // Check password
     const isValidPassword = await bcrypt.compare(password, user.password);
 
     if (!isValidPassword) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
-    // Remove password from response
     delete user.password;
 
     const token = generateToken(user);
 
-    res.json({
-      user,
-      token
-    });
+    res.json({ user, token });
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ error: 'Login failed' });

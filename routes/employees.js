@@ -59,15 +59,24 @@ router.post('/', [
 
     const { name, email, password, role = 'Caregiver' } = req.body;
 
+    console.log('🔍 Attempting to create employee with email:', email.toLowerCase());
+
     // Check if email already exists
     const existing = await db.get(
-      'SELECT id FROM employees WHERE email = ?',
-      [email.toLowerCase()]
+      'SELECT id FROM employees WHERE LOWER(email) = LOWER(?)',
+      [email]
     );
 
+    console.log('🔍 Database check result:', existing);
+    console.log('🔍 Existing is truthy?', !!existing);
+    console.log('🔍 Existing value:', JSON.stringify(existing));
+
     if (existing) {
+      console.log('❌ Email already exists! Existing employee ID:', existing.id);
       return res.status(400).json({ error: 'Email already exists' });
     }
+
+    console.log('✅ Email is available, proceeding to create employee...');
 
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -77,6 +86,8 @@ router.post('/', [
       'INSERT INTO employees (name, email, password, role) VALUES (?, ?, ?, ?)',
       [name, email.toLowerCase(), hashedPassword, role]
     );
+
+    console.log('✅ Employee created with ID:', result.lastID);
 
     const employee = await db.get(
       'SELECT id, name, email, role, created_at FROM employees WHERE id = ?',
@@ -130,8 +141,8 @@ router.put('/:id', [
     if (email) {
       // Check if new email is already taken
       const existing = await db.get(
-        'SELECT id FROM employees WHERE email = ? AND id != ?',
-        [email.toLowerCase(), req.params.id]
+        'SELECT id FROM employees WHERE LOWER(email) = LOWER(?) AND id != ?',
+        [email, req.params.id]
       );
 
       if (existing) {

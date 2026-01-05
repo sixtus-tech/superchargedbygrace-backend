@@ -10,6 +10,7 @@ const timesheetRoutes = require('./routes/timesheets');
 const invoiceRoutes = require('./routes/invoices');
 
 const app = express();
+app.set('trust proxy', true);
 const PORT = process.env.PORT || 5001;
 
 // Security middleware

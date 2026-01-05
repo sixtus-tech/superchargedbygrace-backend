@@ -35,6 +35,16 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
+app.get('/api/init-db-temp', (req, res) => {
+  const { exec } = require('child_process');
+  exec('node scripts/initDatabase.js', (error, stdout, stderr) => {
+    if (error) {
+      return res.status(500).json({ success: false, error: error.message });
+    }
+    res.json({ success: true, message: 'Database initialized!', output: stdout });
+  });
+});
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/employees', employeeRoutes);

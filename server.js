@@ -10,11 +10,12 @@ const timesheetRoutes = require('./routes/timesheets');
 const invoiceRoutes = require('./routes/invoices');
 
 const app = express();
-app.set('trust proxy', true);
+app.set('trust proxy', 1);  // Trust first proxy (Railway)
 const PORT = process.env.PORT || 5001;
 
 // Security middleware
 app.use(helmet());
+
 // Handle multiple CORS origins
 const allowedOrigins = process.env.CORS_ORIGIN 
   ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim())
@@ -34,7 +35,9 @@ app.use(cors({
 // Rate limiting
 const limiter = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100
+  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100,
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 app.use('/api', limiter);
 
@@ -47,6 +50,7 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
+// Temporary database init endpoint
 app.get('/api/init-db-temp', (req, res) => {
   const { exec } = require('child_process');
   exec('node scripts/initDatabase.js', (error, stdout, stderr) => {

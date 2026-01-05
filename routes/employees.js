@@ -61,8 +61,8 @@ router.post('/', [
 
     // Check if email already exists
     const existing = await db.get(
-      'SELECT id FROM employees WHERE email = ?',
-      [email.toLowerCase()]
+      'SELECT id FROM employees WHERE LOWER(email) = LOWER(?)',
+      [email]
     );
 
     if (existing) {

@@ -79,4 +79,4 @@ app.listen(PORT, () => {
   console.log(`⚡ SuperchargedByGrace Backend running on port ${PORT}`);
   console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔗 API available at http://localhost:${PORT}/api`);
-});
+});// JWT fallback fix

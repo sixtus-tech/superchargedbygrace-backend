@@ -97,7 +97,7 @@ router.get('/stats', auth, async (req, res) => {
 });
 
 // Get summary data (for admin dashboard)
-router.get('/summary', auth, requireAdmin, async (req, res) => {
+router.get('/summary', auth, async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
     let query = `

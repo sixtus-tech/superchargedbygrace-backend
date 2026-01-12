@@ -140,6 +140,64 @@ app.get('/api/fix-employee-name-column', async (req, res) => {
     res.status(500).json({ success: false, error: error.message });
   }
 });
+// ONE-TIME bulk employee import
+app.get('/api/bulk-import-employees', async (req, res) => {
+  const db = require('./config/database');
+  const bcrypt = require('bcryptjs');
+  
+  const employees = [
+    { name: 'Nathan Chitate', email: 'Nchitate@superchargedbygrace.com', password: 'NChitate@987' },
+    { name: 'Inos Chibidi', email: 'ichibidi@superchargedbygrace.com', password: 'IChibidi@789' },
+    { name: 'Babyna Mulayi', email: 'bmulayi@superchargedbygrace.com', password: 'BMulayi@987' },
+    { name: 'Primrose Mbirimi', email: 'pmbirimi@superchargedbygrace.com', password: 'PMbirimi@654' },
+    { name: 'Ruvimbo Gavu', email: 'rgavu@superchargedbygrace.com', password: 'RGavu@123' },
+    { name: 'Chanda Sampa', email: 'csampa@superchargedbygrace.com', password: 'CSampa@123' },
+    { name: 'Addington Muza', email: 'amuza@superchargedbygrace.com', password: 'AMuza@987' },
+    { name: 'Heather Makore', email: 'Hmakore@superchargedbygrace.com', password: 'Hmakore@123' },
+    { name: 'Tendai Mafuta', email: 'tmafuta@superchargedbygrace.com', password: 'TMafuta@2026' },
+    { name: 'Tinotenda Mususa', email: 'tinotendamususa68@gmail.com', password: 'TMususa@321' },
+    { name: 'Given Ndlovu', email: 'givengiggs11@gmail.com', password: 'GNdlovu@123' },
+    { name: 'Laura Ziani', email: 'Lauraziani732@gmail.com', password: 'LZiani@456' },
+    { name: 'Andy Mabika', email: 'amabika@superchargedbygrace.com', password: 'AMabika@456' },
+    { name: 'Gabriel Madombwe', email: 'gmadombwe@superchargedbygrace.com', password: 'GMadombwe@123' },
+    { name: 'Linet Musungwa', email: 'lmusungwa@superchargedbygrace.com', password: 'LMusungwa@098' },
+    { name: 'Charles Mupanduki', email: 'cmupanduki@superchargedbygrace.com', password: 'CMupanduki@2026' },
+    { name: 'Caius Jongwe', email: 'cjongwe@superchargedbygrace.com', password: 'CJongwe@123' },
+    { name: 'Gorden Jovo', email: 'gjovo@superchargedbygrace.com', password: 'GJovo@2026' },
+    { name: 'Benson Chabaputa', email: 'bchabaputa@superchargedbygrace.com', password: 'BChabaputa@789' },
+    { name: 'Oswald Dube', email: 'odube@superchargedbygrace.com', password: 'ODube@456' },
+    { name: 'Christopher Makore', email: 'amakore@superchargedbygrace.com', password: 'AMakore@890' }
+  ];
+  
+  try {
+    const results = [];
+    
+    for (const emp of employees) {
+      try {
+        const existing = await db.get('SELECT id FROM employees WHERE LOWER(email) = LOWER(?)', [emp.email]);
+        
+        if (existing && existing.id) {
+          results.push({ name: emp.name, email: emp.email, status: 'already exists' });
+          continue;
+        }
+        
+        const hashedPassword = await bcrypt.hash(emp.password, 10);
+        await db.run(
+          'INSERT INTO employees (name, email, password, role) VALUES (?, ?, ?, ?)',
+          [emp.name, emp.email, hashedPassword, 'Employee']
+        );
+        
+        results.push({ name: emp.name, email: emp.email, status: 'created ✅' });
+      } catch (error) {
+        results.push({ name: emp.name, email: emp.email, status: 'error', error: error.message });
+      }
+    }
+    
+    res.json({ success: true, message: `Bulk import complete! Created ${results.filter(r => r.status.includes('created')).length} employees.`, results });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
 
 // Routes
 app.use('/api/auth', authRoutes);

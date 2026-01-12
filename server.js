@@ -83,6 +83,64 @@ app.get('/api/migrate-entry-type-once', async (req, res) => {
   }
 });
 
+// ONE-TIME fix employee_name column
+app.get('/api/fix-employee-name-column', async (req, res) => {
+  const db = require('./config/database');
+  
+  try {
+    // Check if column exists
+    const tableInfo = await db.all('PRAGMA table_info(timesheets)');
+    const hasEmployeeName = tableInfo.some(col => col.name === 'employee_name');
+    
+    if (!hasEmployeeName) {
+      return res.json({ success: true, message: 'Column does not exist - no fix needed' });
+    }
+    
+    // SQLite doesn't support DROP COLUMN easily, so we need to recreate the table
+    await db.run('BEGIN TRANSACTION');
+    
+    // Create new table without employee_name
+    await db.run(`
+      CREATE TABLE timesheets_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        employee_id INTEGER NOT NULL,
+        date DATE NOT NULL,
+        hours REAL NOT NULL,
+        entry_type TEXT DEFAULT 'hours',
+        client_charge REAL NOT NULL,
+        employee_pay REAL NOT NULL,
+        notes TEXT,
+        status TEXT DEFAULT 'pending',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (employee_id) REFERENCES employees(id)
+      )
+    `);
+    
+    // Copy data (excluding employee_name)
+    await db.run(`
+      INSERT INTO timesheets_new 
+      SELECT id, employee_id, date, hours, entry_type, client_charge, employee_pay, notes, status, created_at, updated_at
+      FROM timesheets
+    `);
+    
+    // Drop old table and rename new one
+    await db.run('DROP TABLE timesheets');
+    await db.run('ALTER TABLE timesheets_new RENAME TO timesheets');
+    
+    await db.run('COMMIT');
+    
+    res.json({ success: true, message: 'Fixed employee_name column issue!' });
+  } catch (error) {
+    try {
+      await db.run('ROLLBACK');
+    } catch (e) {
+      // Ignore rollback errors
+    }
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/employees', employeeRoutes);

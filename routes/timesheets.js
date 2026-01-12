@@ -96,6 +96,34 @@ router.get('/stats', auth, async (req, res) => {
   }
 });
 
+// Get summary data (for admin dashboard)
+router.get('/summary', requireAdmin, async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+    let query = `
+      SELECT 
+        COUNT(*) as total_entries,
+        SUM(hours) as total_hours,
+        SUM(client_charge) as total_revenue,
+        SUM(employee_pay) as total_payroll,
+        SUM(client_charge - employee_pay) as total_profit
+      FROM timesheets
+    `;
+    const params = [];
+
+    if (startDate && endDate) {
+      query += ' WHERE date BETWEEN ? AND ?';
+      params.push(startDate, endDate);
+    }
+
+    const summary = await db.get(query, params);
+    res.json(summary);
+  } catch (error) {
+    console.error('Get summary error:', error);
+    res.status(500).json({ error: 'Failed to fetch summary' });
+  }
+});
+
 // Create timesheet
 router.post('/', [
   auth,

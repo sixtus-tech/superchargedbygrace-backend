@@ -140,6 +140,7 @@ app.get('/api/fix-employee-name-column', async (req, res) => {
     res.status(500).json({ success: false, error: error.message });
   }
 });
+
 // ONE-TIME bulk employee import
 app.get('/api/bulk-import-employees', async (req, res) => {
   const db = require('./config/database');
@@ -194,6 +195,32 @@ app.get('/api/bulk-import-employees', async (req, res) => {
     }
     
     res.json({ success: true, message: `Bulk import complete! Created ${results.filter(r => r.status.includes('created')).length} employees.`, results });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ONE-TIME database backup
+app.get('/api/backup-database', async (req, res) => {
+  const db = require('./config/database');
+  
+  try {
+    const [employees, timesheets] = await Promise.all([
+      db.all('SELECT id, name, email, role, created_at FROM employees'),
+      db.all('SELECT * FROM timesheets')
+    ]);
+    
+    const backup = {
+      timestamp: new Date().toISOString(),
+      employees: employees,
+      timesheets: timesheets,
+      counts: {
+        employees: employees.length,
+        timesheets: timesheets.length
+      }
+    };
+    
+    res.json(backup);
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }

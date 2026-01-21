@@ -232,6 +232,11 @@ app.use('/api/employees', employeeRoutes);
 app.use('/api/timesheets', timesheetRoutes);
 app.use('/api/invoices', invoiceRoutes);
 
+// Root endpoint for Railway health checks
+app.get('/', (req, res) => {
+  res.json({ status: 'ok', message: 'Caregiving API is running' });
+});
+
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -248,17 +253,19 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 5001;
-// FIXED (works on Railway):
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🔗 API available at http://0.0.0.0:${PORT}/api`);
-});
 
-// Database connection test
-const db = require('./config/database');
-db.get('SELECT 1', (err) => {
-  if (err) {
-    console.error('❌ Database connection failed:', err);
-  } else {
-    console.log('✅ Connected to SQLite database');
-  }
+// Start server - bind to 0.0.0.0 for Railway
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🔗 Server running on port ${PORT}`);
+  console.log(`✅ API available at http://0.0.0.0:${PORT}/api`);
+  
+  // Test database connection after server starts
+  const db = require('./config/database');
+  db.get('SELECT 1', (err) => {
+    if (err) {
+      console.error('❌ Database connection failed:', err);
+    } else {
+      console.log('✅ Connected to SQLite database');
+    }
+  });
 });

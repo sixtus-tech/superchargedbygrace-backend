@@ -226,6 +226,86 @@ app.get('/api/backup-database', async (req, res) => {
   }
 });
 
+// ONE-TIME houses feature migration
+app.get('/api/add-houses-feature', async (req, res) => {
+  const db = require('./config/database');
+  
+  try {
+    const results = [];
+    
+    // Create houses table
+    try {
+      await db.run(`
+        CREATE TABLE IF NOT EXISTS houses (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL UNIQUE,
+          employee_pay_per_day REAL NOT NULL,
+          client_charge_per_day REAL NOT NULL,
+          payment_frequency TEXT NOT NULL,
+          invoice_style TEXT NOT NULL,
+          notes TEXT,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+      results.push({ step: 'Create houses table', status: 'success ✅' });
+    } catch (error) {
+      results.push({ step: 'Create houses table', status: 'error', error: error.message });
+    }
+    
+    // Add house_id to timesheets
+    try {
+      await db.run('ALTER TABLE timesheets ADD COLUMN house_id INTEGER REFERENCES houses(id)');
+      results.push({ step: 'Add house_id to timesheets', status: 'success ✅' });
+    } catch (error) {
+      if (error.message.includes('duplicate column')) {
+        results.push({ step: 'Add house_id to timesheets', status: 'already exists' });
+      } else {
+        results.push({ step: 'Add house_id to timesheets', status: 'error', error: error.message });
+      }
+    }
+    
+    // Add house_id to employees
+    try {
+      await db.run('ALTER TABLE employees ADD COLUMN house_id INTEGER REFERENCES houses(id)');
+      results.push({ step: 'Add house_id to employees', status: 'success ✅' });
+    } catch (error) {
+      if (error.message.includes('duplicate column')) {
+        results.push({ step: 'Add house_id to employees', status: 'already exists' });
+      } else {
+        results.push({ step: 'Add house_id to employees', status: 'error', error: error.message });
+      }
+    }
+    
+    // Insert the 4 houses
+    const houses = [
+      { name: 'Frisco', employee_pay: 150, client_charge: 200, frequency: 'weekly', style: 'grouped' },
+      { name: 'Plano Ambrosia', employee_pay: 180, client_charge: 205, frequency: 'weekly', style: 'daily' },
+      { name: 'Plano Aylesbury', employee_pay: 180, client_charge: 205, frequency: 'weekly', style: 'daily' },
+      { name: 'Plano Evergreen', employee_pay: 180, client_charge: 190, frequency: 'bi-weekly', style: 'grouped' }
+    ];
+    
+    for (const house of houses) {
+      try {
+        await db.run(
+          'INSERT INTO houses (name, employee_pay_per_day, client_charge_per_day, payment_frequency, invoice_style) VALUES (?, ?, ?, ?, ?)',
+          [house.name, house.employee_pay, house.client_charge, house.frequency, house.style]
+        );
+        results.push({ step: `Insert house: ${house.name}`, status: 'success ✅' });
+      } catch (error) {
+        if (error.message.includes('UNIQUE constraint')) {
+          results.push({ step: `Insert house: ${house.name}`, status: 'already exists' });
+        } else {
+          results.push({ step: `Insert house: ${house.name}`, status: 'error', error: error.message });
+        }
+      }
+    }
+    
+    res.json({ success: true, message: 'Houses feature migration complete!', results });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/employees', employeeRoutes);

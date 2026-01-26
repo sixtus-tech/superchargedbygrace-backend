@@ -307,6 +307,79 @@ app.get('/api/add-houses-feature', async (req, res) => {
   }
 });
 
+// ONE-TIME bulk house assignment
+app.get('/api/bulk-assign-houses', async (req, res) => {
+  const db = require('./config/database');
+  
+  const assignments = [
+    // Plano Ambrosia
+    { email: 'pmbirimi@superchargedbygrace.com', house: 'Plano Ambrosia' },
+    { email: 'bmulayi@superchargedbygrace.com', house: 'Plano Ambrosia' },
+    { email: 'ichibidi@superchargedbygrace.com', house: 'Plano Ambrosia' },
+    { email: 'nchitate@superchargedbygrace.com', house: 'Plano Ambrosia' },
+    
+    // Plano Aylesbury
+    { email: 'givengiggs11@gmail.com', house: 'Plano Aylesbury' },
+    { email: 'tinotendamususa68@gmail.com', house: 'Plano Aylesbury' },
+    { email: 'lauraziani732@gmail.com', house: 'Plano Aylesbury' },
+    
+    // Plano Evergreen
+    { email: 'ichibidi@superchargedbygrace.com', house: 'Plano Evergreen' }, // Inos works at both
+    { email: 'schacha@superchargedbygrace.com', house: 'Plano Evergreen' },
+    { email: 'tmafuta@superchargedbygrace.com', house: 'Plano Evergreen' },
+    
+    // Frisco
+    { email: 'gmadombwe@superchargedbygrace.com', house: 'Frisco' },
+    { email: 'amuza@superchargedbygrace.com', house: 'Frisco' },
+    { email: 'amabika@superchargedbygrace.com', house: 'Frisco' },
+    { email: 'lmusungwa@superchargedbygrace.com', house: 'Frisco' },
+    { email: 'gjovo@superchargedbygrace.com', house: 'Frisco' },
+    { email: 'bchabaputa@superchargedbygrace.com', house: 'Frisco' },
+    { email: 'rgavu@superchargedbygrace.com', house: 'Frisco' },
+    { email: 'odube@superchargedbygrace.com', house: 'Frisco' },
+    { email: 'cmupanduki@superchargedbygrace.com', house: 'Frisco' },
+    { email: 'hmakore@superchargedbygrace.com', house: 'Frisco' },
+    { email: 'csampa@superchargedbygrace.com', house: 'Frisco' }
+  ];
+  
+  try {
+    const results = [];
+    
+    for (const assignment of assignments) {
+      try {
+        // Get house ID
+        const house = await db.get('SELECT id FROM houses WHERE name = ?', [assignment.house]);
+        if (!house) {
+          results.push({ email: assignment.email, status: 'house not found', house: assignment.house });
+          continue;
+        }
+        
+        // Update employee
+        const result = await db.run(
+          'UPDATE employees SET house_id = ? WHERE LOWER(email) = LOWER(?)',
+          [house.id, assignment.email]
+        );
+        
+        if (result.changes > 0) {
+          results.push({ email: assignment.email, house: assignment.house, status: 'assigned ✅' });
+        } else {
+          results.push({ email: assignment.email, house: assignment.house, status: 'employee not found' });
+        }
+      } catch (error) {
+        results.push({ email: assignment.email, status: 'error', error: error.message });
+      }
+    }
+    
+    res.json({ 
+      success: true, 
+      message: `Bulk assignment complete! Assigned ${results.filter(r => r.status.includes('assigned')).length} employees.`,
+      results 
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/employees', employeeRoutes);

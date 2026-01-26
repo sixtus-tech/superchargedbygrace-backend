@@ -8,6 +8,7 @@ const authRoutes = require('./routes/auth');
 const employeeRoutes = require('./routes/employees');
 const timesheetRoutes = require('./routes/timesheets');
 const invoiceRoutes = require('./routes/invoices');
+const housesRoutes = require('./routes/houses');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -311,6 +312,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/employees', employeeRoutes);
 app.use('/api/timesheets', timesheetRoutes);
 app.use('/api/invoices', invoiceRoutes);
+app.use('/api/houses', housesRoutes);
 
 // Root endpoint for Railway health checks
 app.get('/', (req, res) => {

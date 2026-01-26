@@ -9,7 +9,17 @@ const db = require('../config/database');
 router.get('/', [auth, requireAdmin], async (req, res) => {
   try {
     const employees = await db.all(
-      'SELECT id, name, email, role, created_at FROM employees ORDER BY created_at DESC'
+      `SELECT 
+        e.id, 
+        e.name, 
+        e.email, 
+        e.role, 
+        e.house_id,
+        h.name as house_name,
+        e.created_at
+      FROM employees e
+      LEFT JOIN houses h ON e.house_id = h.id
+      ORDER BY e.created_at DESC`
     );
     res.json(employees);
   } catch (error) {
@@ -22,7 +32,17 @@ router.get('/', [auth, requireAdmin], async (req, res) => {
 router.get('/:id', auth, async (req, res) => {
   try {
     const employee = await db.get(
-      'SELECT id, name, email, role, created_at FROM employees WHERE id = ?',
+      `SELECT 
+        e.id, 
+        e.name, 
+        e.email, 
+        e.role, 
+        e.house_id,
+        h.name as house_name,
+        e.created_at
+      FROM employees e
+      LEFT JOIN houses h ON e.house_id = h.id
+      WHERE e.id = ?`,
       [req.params.id]
     );
 
@@ -49,7 +69,8 @@ router.post('/', [
   body('name').trim().notEmpty().withMessage('Name is required'),
   body('email').isEmail().withMessage('Valid email is required'),
   body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
-  body('role').optional().isIn(['Caregiver', 'Administrator']).withMessage('Invalid role')
+  body('role').optional().isIn(['Caregiver', 'Administrator']).withMessage('Invalid role'),
+  body('house_id').optional().isInt().withMessage('House ID must be an integer')
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -57,7 +78,7 @@ router.post('/', [
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { name, email, password, role = 'Caregiver' } = req.body;
+    const { name, email, password, role = 'Caregiver', house_id } = req.body;
 
     console.log('🔍 Attempting to create employee with email:', email.toLowerCase());
 
@@ -83,14 +104,24 @@ router.post('/', [
 
     // Create employee
     const result = await db.run(
-      'INSERT INTO employees (name, email, password, role) VALUES (?, ?, ?, ?)',
-      [name, email.toLowerCase(), hashedPassword, role]
+      'INSERT INTO employees (name, email, password, role, house_id) VALUES (?, ?, ?, ?, ?)',
+      [name, email.toLowerCase(), hashedPassword, role, house_id || null]
     );
 
     console.log('✅ Employee created with ID:', result.lastID);
 
     const employee = await db.get(
-      'SELECT id, name, email, role, created_at FROM employees WHERE id = ?',
+      `SELECT 
+        e.id, 
+        e.name, 
+        e.email, 
+        e.role, 
+        e.house_id,
+        h.name as house_name,
+        e.created_at
+      FROM employees e
+      LEFT JOIN houses h ON e.house_id = h.id
+      WHERE e.id = ?`,
       [result.lastID]
     );
 
@@ -107,7 +138,8 @@ router.put('/:id', [
   body('name').optional().trim().notEmpty(),
   body('email').optional().isEmail(),
   body('password').optional().isLength({ min: 6 }),
-  body('role').optional().isIn(['Caregiver', 'Administrator'])
+  body('role').optional().isIn(['Caregiver', 'Administrator']),
+  body('house_id').optional().isInt().withMessage('House ID must be an integer')
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -129,7 +161,7 @@ router.put('/:id', [
       return res.status(403).json({ error: 'Access denied' });
     }
 
-    const { name, email, password, role } = req.body;
+    const { name, email, password, role, house_id } = req.body;
     const updates = [];
     const params = [];
 
@@ -164,6 +196,11 @@ router.put('/:id', [
       params.push(role);
     }
 
+    if (house_id !== undefined && req.user.role === 'Administrator') {
+      updates.push('house_id = ?');
+      params.push(house_id || null);
+    }
+
     if (updates.length === 0) {
       return res.json(employee);
     }
@@ -177,7 +214,17 @@ router.put('/:id', [
     );
 
     const updated = await db.get(
-      'SELECT id, name, email, role, created_at FROM employees WHERE id = ?',
+      `SELECT 
+        e.id, 
+        e.name, 
+        e.email, 
+        e.role, 
+        e.house_id,
+        h.name as house_name,
+        e.created_at
+      FROM employees e
+      LEFT JOIN houses h ON e.house_id = h.id
+      WHERE e.id = ?`,
       [req.params.id]
     );
 
